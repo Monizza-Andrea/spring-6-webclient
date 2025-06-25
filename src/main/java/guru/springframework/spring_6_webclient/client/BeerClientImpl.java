@@ -54,4 +54,56 @@ public class BeerClientImpl implements BeerClient {
                 .retrieve()
                 .bodyToMono(BeerDTO.class);
     }
+
+    @Override
+    public Flux<BeerDTO> getBeerByBeerStyle(String beerStyle) {
+
+        return webClient.get().uri(uriBuilder -> uriBuilder
+                        .path(BEER_PATH)
+                        .queryParam("beerStyle", beerStyle).build())
+                .retrieve()
+                .bodyToFlux(BeerDTO.class);
+    }
+
+    @Override
+    public Mono<BeerDTO> createBeer(BeerDTO beerDTO) {
+        return webClient.post()
+                .uri(BEER_PATH)
+                .body(Mono.just(beerDTO), BeerDTO.class)
+                .retrieve()
+                .toBodilessEntity()
+                .flatMap(voidResponseEntity -> Mono.just(voidResponseEntity
+                        .getHeaders().get("Location").get(0)))
+                .map(path -> path.split("/")[path.split("/").length -1])
+                .flatMap(this::getBeerById);
+    }
+
+
+    @Override
+    public Mono<BeerDTO> updateBeer(BeerDTO beerDTO) {
+        return webClient.put()
+                .uri(uriBuilder -> uriBuilder.path(BEER_PATH_ID).build(beerDTO.getId()))
+                .body(Mono.just(beerDTO), BeerDTO.class)
+                .retrieve()
+                .toBodilessEntity()
+                .flatMap(voidResponseEntity -> getBeerById(beerDTO.getId()));
+    }
+
+
+    @Override
+    public Mono<BeerDTO> patchBeer(BeerDTO beerDTO) {
+        return webClient.patch()
+                .uri(uriBuilder -> uriBuilder.path(BEER_PATH_ID).build(beerDTO.getId()))
+                .body(Mono.just(beerDTO), BeerDTO.class)
+                .retrieve()
+                .toBodilessEntity()
+                .flatMap(voidResponseEntity -> getBeerById(beerDTO.getId()));
+    }
+
+    @Override
+    public Mono<Void> deleteBeer(String beerId) {
+        return webClient.delete()
+                .uri(uriBuilder -> uriBuilder.path(BEER_PATH_ID).build(beerId))
+                .retrieve().toBodilessEntity().then();
+    }
 }
